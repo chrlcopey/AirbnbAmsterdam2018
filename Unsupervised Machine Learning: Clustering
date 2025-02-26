@@ -1,0 +1,129 @@
+Unsupervised Machine Learning: Clustering
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib
+import matplotlib.pyplot as plt
+import os
+import sklearn
+from sklearn.cluster import KMeans 
+import pylab as pl 
+from sklearn.preprocessing import StandardScaler
+
+%matplotlib inline
+
+# define path
+path = '/Users/LuisD/Documents/CareerFoundry/Achievement 6/AIR BNB Analysis'
+
+#import
+listings = pd.read_csv(os.path.join(path, 'Data', 'Prepared Data', 'listings_complete_6_4.csv'), index_col = False)
+
+listings.shape
+# Select relevant numeric columns for clustering
+columns = ['price', 'number_of_reviews', 'reviews_per_month', 'availability_365', 'bedrooms', 'security_deposit', 'cleaning_fee']
+data = listings[columns]
+
+# Handle missing values (if any)
+data = data.fillna(data.mean())
+
+# Scale the data
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data)
+
+# Determine the optimal number of clusters using the elbow method
+inertia = []  # To store the inertia values for each k
+
+# Test different values of k 
+for k in range(1, 11):
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(data_scaled)
+    inertia.append(kmeans.inertia_)
+
+# Plot the elbow graph
+plt.figure(figsize=(8, 6))
+plt.plot(range(1, 11), inertia, marker='o', linestyle='-', color='b')
+plt.title('Elbow Method for Optimal k')
+plt.xlabel('Number of Clusters (k)')
+plt.ylabel('Inertia')
+plt.show()
+
+# Fit K-means with k=3
+kmeans = KMeans(n_clusters=3, random_state=42)
+kmeans.fit(data_scaled)
+
+# Add the cluster labels to the original dataset
+listings['cluster'] = kmeans.labels_
+
+# View the cluster centers
+cluster_centers = kmeans.cluster_centers_
+
+# Inverse transform the centers back to original scale
+cluster_centers_original_scale = scaler.inverse_transform(cluster_centers)
+
+# Print the cluster centers in the original scale
+print("Cluster Centers (in original scale):")
+print(pd.DataFrame(cluster_centers_original_scale, columns=columns))
+
+from sklearn.decomposition import PCA
+
+# Reduce data to 2D using PCA
+pca = PCA(n_components=2)
+data_2d = pca.fit_transform(data_scaled)
+
+# Plot the clusters
+plt.figure(figsize=(8, 6))
+plt.scatter(data_2d[:, 0], data_2d[:, 1], c=kmeans.labels_, cmap='viridis', s=50, alpha=0.6)
+plt.title('K-means Clusters (k=3) - PCA Projection')
+plt.xlabel('PCA Component 1')
+plt.ylabel('PCA Component 2')
+plt.show()
+
+# Scatterplot of Price vs. Number of Reviews
+
+plt.figure(figsize=(8,6))
+sns.scatterplot(x=listings['price'], y=listings['number_of_reviews'], hue=listings['cluster'], palette='viridis', alpha=0.6)
+plt.title('Price vs. Number of Reviews (Clustered)')
+plt.xlabel('Price')
+plt.ylabel('Number of Reviews')
+plt.legend(title="Cluster")
+plt.show()
+
+# Scatterplot of Price vs. Availability (365 days)
+plt.figure(figsize=(8,6))
+sns.scatterplot(x=listings['price'], y=listings['availability_365'], hue=listings['cluster'], palette='coolwarm', alpha=0.6)
+plt.title('Price vs. Availability (Clustered)')
+plt.xlabel('Price')
+plt.ylabel('Availability (365 days)')
+plt.legend(title="Cluster")
+plt.show()
+
+# Scatterplot of log_Price vs. Availability (365 days)
+plt.figure(figsize=(8,6))
+sns.scatterplot(x=listings['log_price'], y=listings['availability_365'], hue=listings['cluster'], palette='coolwarm', alpha=0.6)
+plt.title('Price vs. Availability (Clustered)')
+plt.xlabel('Price')
+plt.ylabel('Availability (365 days)')
+plt.legend(title="Cluster")
+plt.show()
+
+# Scatterplot of Price vs. Bedrooms
+plt.figure(figsize=(8,6))
+sns.scatterplot(x=listings['price'], y=listings['bedrooms'], hue=listings['cluster'], palette='plasma', alpha=0.6)
+plt.title('Price vs. Bedrooms (Clustered)')
+plt.xlabel('Price')
+plt.ylabel('Number of Bedrooms')
+plt.legend(title="Cluster")
+plt.show()
+
+# Pairplot of Selected Features
+sns.pairplot(listings, vars=['price', 'number_of_reviews', 'availability_365', 'bedrooms'], hue='cluster', palette='Dark2')
+plt.show()
+
+# Calculate the descriptive statistics, group by cluster and calculate descriptive statistics
+cluster_summary = listings.groupby('cluster')[['price', 'number_of_reviews', 'reviews_per_month', 
+                                               'availability_365', 'bedrooms', 'security_deposit', 
+                                               'cleaning_fee']].describe()
+
+# Display the summary statistics
+print(cluster_summary)
