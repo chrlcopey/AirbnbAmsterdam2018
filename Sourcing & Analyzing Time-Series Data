@@ -1,0 +1,209 @@
+Sourcing & Analyzing Time-Series Data
+
+import quandl
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib
+import matplotlib.pyplot as plt
+import statsmodels.api as sm # Using .api imports the public access version of statsmodels, which is a library that handles 
+# statistical models.
+import os
+import warnings # This is a library that handles warnings.
+
+warnings.filterwarnings("ignore") # Disable deprecation warnings that could indicate, for instance, a suspended library or 
+# feature. These are more relevant to developers and very seldom to analysts.
+
+plt.style.use('fivethirtyeight') # This is a styling option for how your plots will appear. More examples here:
+# https://matplotlib.org/3.2.1/tutorials/introductory/customizing.html
+# https://matplotlib.org/3.1.0/gallery/style_sheets/fivethirtyeight.html
+
+quandl.ApiConfig.api_key = '_KEY_'
+
+#import
+df = pd.read_csv('/Users/LuisD/Desktop/WB_DATA_d950d0cd269a601150c0afd03b234ee2.csv', index_col = False)
+
+#Subsetting
+df_nld = df[df['country_code'] == 'NLD']
+
+print(f"Number of rows in df_nld: {df_nld.shape[0]}")
+
+df_merged = df_nld.merge(df, on='series_id', how='left')
+
+print(f"Number of rows in df_merged: {df_merged.shape[0]}")
+
+unique_names = df_merged['name'].unique()
+print(unique_names)
+
+selected_names = [
+    'Individuals using the Internet (% of population)',
+    'Mobile cellular subscriptions',
+    'New businesses registered (number)',
+    'New business density (new registrations per 1,000 people ages 15-64)',
+    'International tourism, receipts (current US$)',
+    'International tourism, expenditures (current US$)'
+]
+
+df_selected = df_merged[df_merged['name'].isin(selected_names)]
+
+df_selected_dropped = df_selected.drop(columns=['series_id', 'country_code', 'description'])
+
+print(df_selected_dropped.head())
+
+df_selected_dropped.head()
+
+df_selected_dropped.info()
+
+# Filter out data where the year is before 1998
+df_filtered = df_selected_dropped[df_selected_dropped['year'] >= 1998]
+
+# Create a subset containing only 'Mobile cellular subscriptions'
+df_mobile_subscriptions = df_filtered[df_filtered['name'] == 'Mobile cellular subscriptions']
+
+import matplotlib.pyplot as plt
+
+# Plot the trend of 'value' over 'year' for 'Mobile cellular subscriptions'
+plt.figure(figsize=(12, 6))
+plt.plot(df_mobile_subscriptions['year'], df_mobile_subscriptions['value'], marker='o', color='b')
+plt.title('Mobile Cellular Subscriptions Over Time')
+plt.xlabel('Year')
+plt.ylabel('Value (Number of Mobile Cellular Subscriptions)')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Create a subset containing only 'Individuals using the Internet (% of population)'
+df_internet_usage = df_filtered[df_filtered['name'] == 'Individuals using the Internet (% of population)']
+
+import matplotlib.pyplot as plt
+
+# Plot the trend of 'value' (individuals using the Internet) over 'year'
+plt.figure(figsize=(12, 6))
+plt.plot(df_internet_usage['year'], df_internet_usage['value'], marker='o', color='purple')
+plt.title('Individuals Using the Internet Over Time (% of Population)')
+plt.xlabel('Year')
+plt.ylabel('Percentage of Population (%)')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(10, 6))
+plt.scatter(df_internet_usage['year'], df_internet_usage['value'], color='orange')
+plt.title('Individuals Using the Internet (% of Population) Over Time')
+plt.xlabel('Year')
+plt.ylabel('Percentage of Population (%)')
+plt.tight_layout()
+plt.show()
+
+
+# Create a subset containing only 'International tourism, expenditures (current US$)'
+df_tourism_expenditures = df_filtered[df_filtered['name'] == 'International tourism, expenditures (current US$)']
+
+df_tourism_expenditures.info()
+
+# Check for missing values in 'year' and 'value' columns
+missing_values = df_tourism_expenditures[['year', 'value']].isnull().sum()
+print("Missing values:")
+print(missing_values)
+
+# Check for out-of-range values in 'year'
+invalid_years = df_tourism_expenditures[(df_tourism_expenditures['year'] < 2000) | 
+                                        (df_tourism_expenditures['year'] > 2023)]  # Adjust the range as necessary
+print("Rows with invalid years:")
+print(invalid_years)
+
+# Check for negative or unrealistic values in 'value' (expenditures)
+invalid_values = df_tourism_expenditures[df_tourism_expenditures['value'] < 0]
+print("Rows with invalid values (negative expenditures):")
+print(invalid_values)
+
+plt.figure(figsize=(10, 6))
+plt.scatter(df_tourism_expenditures['year'], df_tourism_expenditures['value'], color='blue')
+plt.title('Tourism Expenditures Over Time')
+plt.xlabel('Year')
+plt.ylabel('Expenditures (Current US$)')
+plt.tight_layout()
+plt.show()
+
+# Exclude rows where 'year' is 2020
+df_tourism_expenditures_filtered = df_tourism_expenditures[df_tourism_expenditures['year'] != 2020]
+
+# Check the result
+print(df_tourism_expenditures_filtered.head())
+
+plt.figure(figsize=(10, 6))
+plt.scatter(df_tourism_expenditures_filtered['year'], df_tourism_expenditures_filtered['value'], color='blue')
+plt.title('Tourism Expenditures Over Time')
+plt.xlabel('Year')
+plt.ylabel('Expenditures (Current US$)')
+plt.tight_layout()
+plt.show()
+
+### Time-series analysis: decomposition¶
+
+# Sort the data by 'year' to ensure it's in correct order
+df_tourism_expenditures_filtered = df_tourism_expenditures_filtered.sort_values('year')
+
+# Set 'year' as the index 
+df_tourism_expenditures_filtered['date'] = pd.to_datetime(df_tourism_expenditures_filtered['year'], format='%Y')
+df_tourism_expenditures_filtered.set_index('date', inplace=True)
+
+import statsmodels.api as sm
+
+# Decompose the time series using the 'value' column
+decomposition = sm.tsa.seasonal_decompose(df_tourism_expenditures_filtered['value'], model='additive', period=1)
+
+# Plot the decomposition
+decomposition.plot()
+plt.tight_layout()
+plt.show()
+
+# Sort the data by 'year' to ensure it's in correct order
+df_internet_usage = df_internet_usage.sort_values('year')
+
+# Set 'year' as the index 
+df_internet_usage['date'] = pd.to_datetime(df_internet_usage['year'], format='%Y')
+df_internet_usage.set_index('date', inplace=True)
+
+# Decompose the time series using the 'value' column
+decomposition = sm.tsa.seasonal_decompose(df_internet_usage['value'], model='additive', period=1)
+
+# Plot the decomposition
+decomposition.plot()
+plt.tight_layout()
+plt.show()
+
+### Test to check for stationarity.
+
+from statsmodels.tsa.stattools import adfuller
+
+# Conduct the Dickey-Fuller test on the 'value' column
+result = adfuller(df_tourism_expenditures_filtered['value'])
+# Print the results
+print("ADF Statistic:", result[0])
+print("p-value:", result[1])
+print("Critical Values:", result[4])
+
+# Check out a plot of autocorrelations
+import matplotlib.pyplot as plt
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+# ACF plot with a maximum of 10 lags (adjusted for PACF)
+plt.figure(figsize=(10, 6))
+plot_acf(df_tourism_expenditures_filtered['value'], lags=10)  # Adjusted lags to 10
+plt.title('Autocorrelation Function (ACF)')
+plt.tight_layout()
+plt.show()
+
+# PACF plot with a maximum of 10 lags (adjusted for PACF)
+plt.figure(figsize=(10, 6))
+plot_pacf(df_tourism_expenditures_filtered['value'], lags=10)  # Adjusted lags to 10
+plt.title('Partial Autocorrelation Function (PACF)')
+plt.tight_layout()
+plt.show()
+
+
+
+
+
+
