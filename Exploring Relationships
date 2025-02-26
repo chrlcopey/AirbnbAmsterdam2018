@@ -1,0 +1,153 @@
+# 6.2: Exploring Relationships
+
+# New column with month name
+calendar['month'] = pd.to_datetime(calendar['date']).dt.month_name()
+
+#Grouping by id, month and availability
+calendar2=pd.DataFrame(calendar.groupby(['listing_id','month','available']).count()['date']).reset_index()
+
+# Correction names and data types
+calendar2.rename(columns={'date':'total','listing_id':'id'},inplace=True)
+calendar2['id'] = calendar2['id'].astype('str')
+
+# Export
+calendar2.to_csv('calendar2.csv',index=False)
+
+# selection of variables from listings
+listings2 = listings[['id','name','neighbourhood','room_type','price',
+                      'number_of_reviews','reviews_per_month','availability_365']]
+
+#List of columns that i want to use
+
+listings_details_to_use = ['id','host_is_superhost','neighbourhood', 'property_type','room_type','bedrooms',
+                 'price','security_deposit','cleaning_fee', 
+                  'number_of_reviews','reviews_per_month']
+
+not_in_listings_details_columns = []
+
+# List of columns that are not repeated 
+
+for column in listings_details.columns:
+    if column not in listings2.columns:
+        not_in_listings_details_columns.append(column)
+        
+listings_details_to_use2 = []   
+
+# Columns that i want to use and are not repeated with listings
+
+for column in listings_details_to_use:
+    if column in not_in_listings_details_columns:
+        listings_details_to_use2.append(column)
+        
+listings_details_to_use2.append('id')
+
+# Leave only the columns that i want
+
+listings_details2 = listings_details[listings_details_to_use2]
+
+# Merge of the two listings tables
+listings_complete = listings2.merge(listings_details2,on='id')
+
+listings_complete.info()
+
+# Ensure column is a string before applying .str methods
+listings_complete["security_deposit"] = (
+    listings_complete["security_deposit"]
+    .astype(str)  # Convert to string first
+    .str.replace(r"[\$,]", "", regex=True)  # Remove $ and commas
+    .replace("nan", "0")  # Replace 'nan' string with '0'
+    .astype(float)  # Convert to float
+)
+
+listings_complete["cleaning_fee"] = (
+    listings_complete["cleaning_fee"]
+    .astype(str)  # Convert to string first
+    .str.replace(r"[\$,]", "", regex=True)  # Remove $ and commas
+    .replace("nan", "0")  # Replace 'nan' string with '0'
+    .astype(float)  # Convert to float
+)
+
+listings_complete['id'] = listings_complete['id'].astype('str')
+
+# Export
+listings_complete.to_csv('listings_complete.csv',index=False)
+
+listings_complete.describe()
+
+import matplotlib.pyplot as plt
+
+listings_complete.hist(figsize=(12, 8), bins=30, edgecolor="black")
+plt.suptitle("Distribution of Numerical Variables", fontsize=16)
+plt.show()
+
+listings_complete['neighbourhood'].value_counts()
+listings_complete['room_type'].value_counts()
+listings_complete['host_is_superhost'].value_counts()
+listings_complete['property_type'].value_counts()
+
+# Compute correlation matrix for only numeric columns
+corr_matrix = listings_complete.select_dtypes(include=['number']).corr()
+
+# Plot heatmap
+plt.figure(figsize=(12,8))
+sns.heatmap(corr_matrix, cmap='coolwarm', annot=True, fmt=".2f", linewidths=0.5)
+plt.title("Correlation Matrix of Airbnb Listings")
+plt.show()
+
+# Define the strongest correlated variable pairs
+strong_corr_pairs = [
+    ('number_of_reviews', 'reviews_per_month'),
+    ('bedrooms', 'cleaning_fee'),
+    ('bedrooms', 'price')
+]
+
+# Set up figure size
+plt.figure(figsize=(12, 8))
+
+# Create subplots for each correlated variable pair
+for i, (x_var, y_var) in enumerate(strong_corr_pairs, 1):
+    plt.subplot(2, 2, i)  # Arrange in a grid
+    sns.scatterplot(data=listings_complete, x=x_var, y=y_var, alpha=0.5)
+    plt.title(f'Scatterplot of {x_var} vs {y_var}')
+
+# Adjust layout
+plt.tight_layout()
+plt.show()
+
+# list of column names
+list_columns = ['price', 'availability_365', 'number_of_reviews', 'reviews_per_month', ] 
+
+# Create the pair plot
+sns.pairplot(df[list_columns])
+
+# Show the plot
+plt.show()
+
+#defining and generating pair plot 
+
+ppb = listings_complete[['price', 'number_of_reviews','reviews_per_month', 'availability_365', 'bedrooms', 'security_deposit', 'cleaning_fee']]
+sns.pairplot(ppb)
+
+# Show the plot
+plt.show()
+
+sns.histplot(listings_complete['price'], bins = 2e0, kde = True)
+
+plt.show()
+
+listings_complete.loc[listings_complete['price'] < 200, 'Price category'] = 'Low price'
+
+listings_complete.loc[(listings_complete['price'] >= 200) & (listings_complete['price'] < 600), 'Price category'] = 'Middle price'
+
+listings_complete.loc[listings_complete['price'] >= 600, 'Price category'] = 'High price'
+
+listings_complete['Price category'].value_counts(dropna = False)
+
+listings_complete.columns
+
+# Create a categorical plot in seaborn using the price categories created above
+
+sns.set(style="ticks")
+g = sns.catplot(x="number_of_reviews", y="price", hue="Price category", data=listings_complete)
+
+plt.show()
