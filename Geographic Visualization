@@ -1,0 +1,97 @@
+Geographic Visualization 
+
+# Import data and libraries
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib
+import os
+import folium
+import json
+
+# This command propts matplotlib visuals to appear in the notebook 
+%matplotlib inline
+
+# define path
+path = '/Users/LuisD/Documents/CareerFoundry/Achievement 6/AIR BNB Analysis'
+
+#import
+listings = pd.read_csv(os.path.join(path, 'Data', 'Prepared Data', 'listings_complete_cleaned.csv'), index_col = False)
+
+listings.shape
+
+listings.info()
+
+# Drop column
+listings = listings.drop(columns=['Unnamed: 0'])
+
+listings.info()
+
+from folium.plugins import HeatMap
+from folium import Choropleth
+
+import geopandas as gpd
+
+# Load the GeoJSON file as a GeoDataFrame
+country_geo = gpd.read_file('/Users/LuisD/Documents/CareerFoundry/Achievement 6/AIR BNB Analysis/Data/Original Data/neighbourhoods.geojson')
+
+# Check if the data loaded correctly
+print(country_geo.head())  # Shows first 5 rows
+print(country_geo.columns)  # Lists all column names
+
+print(country_geo.columns)
+
+# Ensure both datasets have 'neighbourhood' as a common column
+if 'neighbourhood' in country_geo.columns and 'neighbourhood' in listings.columns:
+    merged_data = country_geo.merge(listings, on="neighbourhood", how="left")
+else:
+    print("Column 'neighbourhood' not found in one of the datasets!")
+
+# Group the listings dataset by neighbourhood and compute the average price
+price_by_neighbourhood = listings.groupby('neighbourhood')['price'].mean().reset_index()
+
+# Rename columns for clarity
+price_by_neighbourhood.columns = ['neighbourhood', 'avg_price']
+
+# Merge the geojson file with the price data
+merged_data = country_geo.merge(price_by_neighbourhood, left_on="neighbourhood", right_on="neighbourhood", how="left")
+
+# Create a Folium map around Amsterdam
+m = folium.Map(location=[52.3676, 4.9041], zoom_start=12)
+
+# Add the choropleth layer
+choropleth = Choropleth(
+    geo_data=country_geo,
+    data=price_by_neighbourhood,
+    columns=['neighbourhood', 'avg_price'],
+    key_on='feature.properties.neighbourhood',  # Adjust if necessary based on the GeoJSON file structure
+    fill_color='YlOrRd',
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name="Average Airbnb Price in Amsterdam (€)"
+).add_to(m)
+
+# Display the map
+m
+
+merged_data.info()
+
+# Save the Folium map as an HTML file
+m.save("amsterdam_airbnb_map.html")
+
+# Subset listings DataFrame
+subset_listings = listings[['id', 'neighbourhood', 'room_type', 'price', 'number_of_reviews', 'reviews_per_month', 'availability_365']]
+
+# Optionally, save the subsetted DataFrame to a CSV
+subset_listings.to_csv('subset_listings.csv', index=False)
+
+# Assuming the 'neighbourhood' field in country_geo matches 'neighbourhood' in listings
+filtered_geo = country_geo[country_geo['neighbourhood'].isin(subset_listings['neighbourhood'].unique())]
+
+# Save the filtered GeoJSON to a file for Tableau
+filtered_geo.to_file('filtered_country_geo.geojson', driver='GeoJSON')
+
+
+
+
+
