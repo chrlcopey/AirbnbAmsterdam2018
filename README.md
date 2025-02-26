@@ -65,12 +65,11 @@ The dataset comes from **Inside Airbnb** and provides a snapshot of listings on 
 
 ## **Repository Structure**
 ```
-📂 Airbnb-Amsterdam-Analysis
- ├── 📄 README.md             # Project overview & instructions
+📂 AIR BNB Analysis
+ ├── 📄 README.pdf             # Project overview & instructions
  ├── 📂 data                  # Raw & processed datasets
  ├── 📂 notebooks             # Jupyter notebooks for data analysis
  ├── 📂 visualizations        # Tableau dashboards & charts
  ├── 📄 Airbnb_Analysis.ipynb # Main analysis script
- ├── 📄 conclusions.md        # Summary of key findings
 ```
 
